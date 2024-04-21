@@ -1,113 +1,85 @@
 import random
+import pprint # use later
 
-# def pretty_print_dict(dict): # https://www.geeksforgeeks.org/python-pretty-print-a-dictionary-with-dictionary-value/
-#     pretty_dict = ''
-#     for k, v in dict.items():
-#         pretty_dict += f'{k}: \n'
-#         for value in v:
-#             pretty_dict += f'   {value}: {v[value]}\n'
-#     print(pretty_dict)
-#     return
+# turn = complete run of the board
+# match = whole game
 
-players = [
-    #0
-    {
-        "behavior": "impulsive",
-        "position": 0,
-        "balance": 300,
-        "order": None
-    },
-    #1
-    {
-        "behavior": "demanding",
-        "position": 0,
-        "balance": 300,
-        "order": None
-    },
-    #2
-    {
-        "behavior": "cautious",
-        "position": 0,
-        "balance": 300,
-        "order": None
-    },
-    #3
-    {
-        "behavior": "random",
-        "position": 0,
-        "balance": 300,
-        "order": None
-    },
-]
+def roll_dice():
+    dice_roll = random.randrange(1, 7)       
+    return dice_roll 
 
-def generate_board(slots=20):
-    
-    board = []
-    
-    for _ in range(slots):
-        owner = ''
+def impulsive(balance, price, rent): 
+    return True
+
+def demanding(balance, price, rent):
+    if rent > 50:
+        return True
+    else:
+        return False
+
+def cautious(balance, price, rent):
+    if balance - price >= 80:
+        return True
+    else:
+        return False
+
+def rand(balance, price, rent):
+    probability = random.random()
+    if probability >= 0.5:
+        return True
+    else:
+        return False
+
+players = {
+    impulsive: {
+        "position": 0,
+        "balance": 300,
+        "order": 0,
+        "turn": 0
+    },
+    demanding: {
+        "position": 0,
+        "balance": 300,
+        "order": 0,
+        "turn": 0
+    },
+    cautious: {
+        "position": 0,
+        "balance": 3000,
+        "turn": 0
+    },
+    rand: {
+        "position": 0,
+        "balance": 3000,
+        "turn": 0
+    },
+}
+
+def generate_board(slots=20):    
+    board = {}
+    for i in range(slots):
+        owner = None
         price = random.randrange(150, 900, 50)
         rent = 0.5 /100 * price
         slot = {"owner": owner, "price": price, "rent": rent}
-
-        # {
-        #     "owner": "PLAYER X",
-        #     "price": 1_000.00,
-        #     "rent": 5
-        # }
-
-        board.append(slot)
-    
-    # test
-    # print(board)
-
+        board[i] = slot
     return board
 
-board = generate_board()
-
-def roll_dice():
-    
-    dice_roll = random.randrange(1, 6)
-    
-    # teste
-    # print(dice_roll)
-    
-    return dice_roll 
-
-def buy_decision(slot_price, slot_rent, player):
-    
-    if player["balance"] >= slot_price:
-        match player["behavior"]:
-            case "impulsive":
-                return "buy"
-            case "demanding":
-                if slot_rent > 50:
-                    return "buy"
-            case "cautious":
-                if player["balance"] - slot_price >= 80:
-                    return "buy"
-            case "random":
-                probability = random.random()
-                if probability > 0.5:
-                    return "buy"
-
-def player_action(slot, player):
-
+def player_action(players, player, board, slot):
     slot_owner = board[slot]["owner"]
     slot_price = board[slot]["price"]
     slot_rent = board[slot]["rent"]
+    player_balance = player["balance"]
     
-    if slot_owner == '':
-        buy_call = buy_decision(slot_price, slot_rent, player)
-        
-        if buy_call == "buy": # mudar para booleano
-            board[slot]["owner"] = player["behavior"]
+    if slot_owner == None:
+        buy_call = player(player_balance, slot_price, slot_rent)
+        if buy_call == True:
+            board[slot]["owner"] = player
             player["balance"] -= slot_price
     
     else:
         player["balance"] -= slot_rent
-        seu_barriga = list(players.keys())[list(players.values()).index(slot_owner)] # ???
-        players[seu_barriga]["balance"] += slot_rent
+        players[slot_owner]["balance"] += slot_rent
 
 def player_turn(player):
     
@@ -147,7 +119,6 @@ def sort_players():
 
     return sorted_players
 
-sort_players()
 
 def play_turn():
     sorted_players = sort_players()
