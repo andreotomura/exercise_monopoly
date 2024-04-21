@@ -1,188 +1,179 @@
 import random
-import pprint # use later
+import pprint 
+    # use later
 
-# turn = complete run of the board
-# match = whole game
+# game = whole match
+# turn = every player made their move
+# move = the player's move
+# action = the player's action
 
-def roll_dice():
-    dice_roll = random.randrange(1, 7)       
-    return dice_roll 
+# ---------- PLAYER'S BEHAVIORS ----------
 
-def impulsive(balance, price, rent): 
-    return True
-
-def demanding(balance, price, rent):
-    if rent > 50:
-        return True
-    else:
-        return False
-
-def cautious(balance, price, rent):
-    if balance - price >= 80:
-        return True
-    else:
-        return False
-
-def rand(balance, price, rent):
-    probability = random.random()
-    if probability >= 0.5:
-        return True
-    else:
-        return False
-
-players = {
-    impulsive: {
-        "position": 0,
-        "balance": 300,
-        "order": 0,
-        "turn": 0
-    },
-    demanding: {
-        "position": 0,
-        "balance": 300,
-        "order": 0,
-        "turn": 0
-    },
-    cautious: {
-        "position": 0,
-        "balance": 3000,
-        "turn": 0
-    },
-    rand: {
-        "position": 0,
-        "balance": 3000,
-        "turn": 0
-    },
-}
+def buy_call(players, player, price, rent):
+    result = False
+    match players[player]:
+        case "impulsive": 
+            result = True
+        case "demanding":
+            if rent > 50:
+                result = True
+        case "cautious":
+            if players[player]["balance"] - price >= 80:
+                result = True
+        case "random":
+            probability = random.random()
+            if probability >= 0.5:
+                result = True
+    return result
+    
+# ---------- SETUP ----------
 
 def generate_board(slots=20):    
     board = {}
     for i in range(slots):
         owner = None
-        price = random.randrange(150, 900, 50)
+        price = random.randrange(150, 450, 50)
         rent = 0.5 /100 * price
         slot = {"owner": owner, "price": price, "rent": rent}
         board[i] = slot
     return board
 
-def player_action(players, player, board, slot):
+def create_players():
+    players = {
+        "impulsive": {
+            "position": 0,
+            "balance": 300,
+            "order": 0,
+            "turn": 0
+        },
+        "demanding": {
+            "position": 0,
+            "balance": 300,
+            "order": 0,
+            "turn": 0
+        },
+        "cautious": {
+            "position": 0,
+            "balance": 300,
+            "turn": 0
+        },
+        "random": {
+            "position": 0,
+            "balance": 300,
+            "turn": 0
+        },
+    }
+    return players
+
+def sort_players(players):
+    ''' DEFINE THE ORDER OF PLAYERS IN A TURN '''
+    list_of_randoms = []
+    player_order = []
+    good_list = False
+    while good_list == False:
+        for player in players:
+            players[player]["order"] = random.random()
+            list_of_randoms.append(players[player]["order"])
+        if len(list_of_randoms) == len(set(list_of_randoms)):
+            good_list = True
+    list_of_randoms.sort(reverse=True)
+    for score in list_of_randoms:
+        for player in players:
+            if players[player]["order"] == score:
+                player_order.append(player)    
+    return player_order
+
+# ---------- PLAYER FUNCTIONS ----------
+
+def play_action(players, player, board, slot):
+    ''' WHAT A PLAYER DOES WHEN IT LANDS ON A SLOT'''
     slot_owner = board[slot]["owner"]
     slot_price = board[slot]["price"]
-    slot_rent = board[slot]["rent"]
-    player_balance = player["balance"]
-    
+    slot_rent = board[slot]["rent"]  
     if slot_owner == None:
-        buy_call = player(player_balance, slot_price, slot_rent)
-        if buy_call == True:
-            board[slot]["owner"] = player
-            player["balance"] -= slot_price
-    
+        if players[player]["balance"] >= slot_price:
+            call = buy_call(players, player, slot_price, slot_rent)
+            if call == True:
+                board[slot]["owner"] = player
+                players[player]["balance"] -= slot_price
     else:
-        player["balance"] -= slot_rent
+        players[player]["balance"] -= slot_rent
+        test = players[slot_owner]["balance"]
         players[slot_owner]["balance"] += slot_rent
 
-def player_turn(player):
-    
+def play_round(players, player, board):
+    ''' PLAYER'S WHOLE MOVE '''
     dice_roll = roll_dice()
-    player["position"] += dice_roll
-    landing_slot = player["position"]
-    
-    player_action(landing_slot, player)
+    landing_slot = players[player]["position"] + dice_roll
+    if landing_slot > (len(board)-1):
+        landing_slot -= len(board)
+        players[player]["position"] = landing_slot
+        players[player]["turn"] += 1
+        players[player]["balance"] += 100
+    else:
+        players[player]["position"] = landing_slot 
+    play_action(players, player, board, landing_slot)
 
-def sort_players():
-    
-    sorted_players = []
-    valid_list = False
 
-    while valid_list == False:
-        dice_rolls = []
-        for _ in range(4):
-            dice_rolls.append(roll_dice())
-            print(dice_rolls)
-        if len(dice_rolls) == len(set(dice_rolls)):
-            valid_list = True  
-
-    players_dice_rolls = {
-        "impulsive": dice_rolls[0],
-        "demanding": dice_rolls[1],
-        "cautious": dice_rolls[2],
-        "random": dice_rolls[3],
-    }
-
-    dice_rolls.sort(reverse=True) # learn how to sort this manually later
+def play_turn(players, board, player_order):
+    for player in player_order:
+        play_round(players, player, board)
+        if players[player]["balance"] < 0:
+            player_order.remove(player)
     
-    sorted_players = [player for score in dice_rolls for player, player_score in players_dice_rolls.items() if player_score == score] # ???
-    print(sorted_players)
-    
+# ---------- AUXILIARY FUNCTIONS ----------
+
+def roll_dice():
+    dice_roll = random.randrange(1, 7)       
+    return dice_roll 
+
+def check_winner(player_order):
+    if len(player_order) == 1:
+        return True
+    else:
+        return False
+
+def check_balances(players):
+    max_balance = 0
+    winner = None
     for player in players:
-        player["order"] = sorted_players.index(player["behavior"])
+        if players[player]["balance"] > max_balance:
+            max_balance = players[player]["balance"]
+            winner = player
+    return winner   # missing the tie-break
 
-    return sorted_players
+# ---------- MAIN FUNCTIONS ----------
 
-
-def play_turn():
-    sorted_players = sort_players()
-
-    for player in sorted_players:
-        player_turn(players[sorted_players[player]]) # probably wrong
-
-
-
-
-
-
-
-def check_balances(players): # redo!
-    balances = []
-
-    player_1_balance = players["player_1"]["balance"]
-    player_2_balance = players["player_2"]["balance"]
-    player_3_balance = players["player_3"]["balance"]
-    player_4_balance = players["player_4"]["balance"]
-
-    balances.append(player_1_balance)
-    balances.append(player_2_balance)
-    balances.append(player_3_balance)
-    balances.append(player_4_balance)
-
-    max_balance = max(balances)
-    max_balance_player = balances.index(max_balance)
-
-    print(max_balance_player)
-
-    # for first_level_key in players.keys():
-    #     print(first_level_key)
-    #     for second_level_key in players[first_level_key]:
-    #         print(second_level_key["balance"])
-
-    return max(balances)
-
-
-
-def run_game():
-
-        
-
-    #setup
-    rounds = 0
-    end_game = False
-    winner = ""
-    
-    # loop
-    for turn in range(1000):
-        
-        if end_game == True:
-            winner = "name of the winner"
-            rounds = round
-            break
-    
-    check_balances(impulsive, demanding, cautious, random)
-    end_game = True
-    rounds = 1000
-    winner = "who has the most balance, and tiebreak it with play order" # create an order randomly each game?
-
-def run_program(i=300):
+def play_game(board, i=300):
+    winners = []
+    turns = []
+    timeouts = []
+    players = create_players()
     for sim in range(i):
-        run_game()
         print(f"Simulation nº {sim+1}")
-        print("Results:")
+        winner = None
+        player_order = sort_players(players)
+        while winner == None:
+            for turn in range(5):
+                play_turn(players, board, player_order)
+                if check_winner(player_order) == True:
+                    winner = player_order[0]
+                    winners.append(winner)
+                    turns.append(turn)
+                    timeouts.append(False)
+                    print(f"Match ended on turn {turn}.")
+                    print(f'Winner: {winner}, Balance: {players[winner]["balance"]}')
+                    break
+            turns.append(5)
+            winner = check_balances(players)
+            winners.append(winner)
+            timeouts.append(True)
+        print("Match ended by timeout")
+        print(f'Winner: {winner}, Balance: {players[winner]["balance"]}')
+    print(f"Winners list: {winners}")
+    print(f"Turns list: {turns}")
+    print(f"Timeouts list{timeouts}")
+    # return ?
+    
+board = generate_board(20)
+play_game(board)
